@@ -174,6 +174,7 @@
       margin-top: 1.5em;
       display: flex;
       gap: 10px;
+      flex-wrap: wrap;
     }
     
     button {
@@ -207,6 +208,14 @@
     
     button.secondary:hover {
       background-color: #0d47a1;
+    }
+    
+    button.tertiary {
+      background-color: var(--accent-color);
+    }
+    
+    button.tertiary:hover {
+      background-color: #e68900;
     }
     
     .other-unit-container {
@@ -392,6 +401,70 @@
       font-weight: 500;
     }
     
+    /* Save/Load Section */
+    .save-load-section {
+      background: var(--white);
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--accent-color);
+    }
+    
+    .save-load-buttons {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .saved-students-list {
+      margin-top: 15px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid var(--medium-gray);
+      border-radius: var(--border-radius);
+    }
+    
+    .saved-student-item {
+      padding: 10px 15px;
+      border-bottom: 1px solid var(--medium-gray);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .saved-student-item:last-child {
+      border-bottom: none;
+    }
+    
+    .saved-student-item:hover {
+      background-color: var(--light-gray);
+    }
+    
+    .saved-student-info {
+      flex-grow: 1;
+    }
+    
+    .saved-student-name {
+      font-weight: 600;
+    }
+    
+    .saved-student-id {
+      font-size: 0.9em;
+      color: var(--dark-gray);
+    }
+    
+    .saved-student-actions {
+      display: flex;
+      gap: 5px;
+    }
+    
+    .saved-student-actions button {
+      padding: 5px 10px;
+      font-size: 0.8rem;
+    }
+    
     @media (max-width: 768px) {
       .container {
         padding: 15px;
@@ -408,6 +481,21 @@
       
       .form-grid {
         grid-template-columns: 1fr;
+      }
+      
+      .save-load-buttons {
+        flex-direction: column;
+      }
+      
+      .saved-student-item {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .saved-student-actions {
+        margin-top: 10px;
+        width: 100%;
+        justify-content: flex-end;
       }
     }
     
@@ -658,6 +746,41 @@
       <button type="submit">Generate Schedule</button>
     </form>
 
+    <div class="save-load-section">
+      <h2>3. Save & Load Student Data</h2>
+      <div class="save-load-buttons">
+        <button onclick="saveStudentData()" class="tertiary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+          Save Current Student
+        </button>
+        <button onclick="loadStudentData()" class="tertiary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Load Student Data
+        </button>
+        <button onclick="clearAllData()" class="secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            <line x1="10" y1="11" x2="10" y2="17"></line>
+            <line x1="14" y1="11" x2="14" y2="17"></line>
+          </svg>
+          Clear All Data
+        </button>
+      </div>
+      
+      <div id="savedStudentsList" class="saved-students-list">
+        <!-- Saved students will appear here -->
+      </div>
+    </div>
+
     <div class="export-buttons">
       <button onclick="exportToCSV()" class="secondary">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
@@ -685,6 +808,9 @@
 
   <script>
     window.jsPDF = window.jspdf.jsPDF;
+
+    // Storage key for saved students
+    const STORAGE_KEY = 'CIII_CEM_SAVED_STUDENTS';
 
     function formatDate(date) {
       if (!(date instanceof Date)) {
@@ -1299,6 +1425,300 @@
       }
     }
 
+    // Save/Load functionality
+    function saveStudentData() {
+      const studentName = document.getElementById("studentName").value.trim();
+      if (!studentName) {
+        alert("Please enter a student name before saving.");
+        return;
+      }
+
+      // Get current form data
+      const studentData = {
+        id: document.getElementById("studentId").value,
+        name: studentName,
+        startDate: document.getElementById("startDate").value,
+        notes: document.getElementById("notes").value,
+        overrideRules: document.getElementById("overrideRules").checked,
+        scheduleMode: document.querySelector('input[name="scheduleMode"]:checked').value,
+        selectedUnits: getSelectedUnits(),
+        customUnits: getCustomUnitsData(),
+        unitDurations: getUnitDurations(),
+        unitQuarters: getUnitQuarters(),
+        timestamp: new Date().toISOString()
+      };
+
+      // Get existing saved students
+      const savedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      
+      // Check if student already exists
+      const existingIndex = savedStudents.findIndex(s => 
+        s.name === studentData.name && 
+        (s.id === studentData.id || (!s.id && !studentData.id))
+      );
+      
+      if (existingIndex >= 0) {
+        // Update existing student
+        if (confirm(`A student named "${studentData.name}" already exists. Do you want to overwrite it?`)) {
+          savedStudents[existingIndex] = studentData;
+        } else {
+          return; // User canceled
+        }
+      } else {
+        // Add new student
+        savedStudents.push(studentData);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStudents));
+      
+      // Update the saved students list
+      updateSavedStudentsList();
+      
+      alert(`Student data for "${studentData.name}" has been saved.`);
+    }
+
+    function getCustomUnitsData() {
+      const customUnits = [];
+      document.querySelectorAll("[id^='otherUnitCheckbox-']").forEach(cb => {
+        const id = cb.id.split("-")[1];
+        customUnits.push({
+          id: id,
+          details: document.getElementById(`otherUnitDetails-${id}`).value,
+          groupType: document.getElementById(`otherUnitGroup-${id}`).value,
+          duration: document.getElementById(`otherUnitDuration-${id}`).value,
+          quarter: document.getElementById(`otherUnitQuarter-${id}`).value,
+          checked: cb.checked
+        });
+      });
+      return customUnits;
+    }
+
+    function getUnitDurations() {
+      const durations = {};
+      document.querySelectorAll("input.duration").forEach(input => {
+        durations[input.dataset.unit] = input.value;
+      });
+      return durations;
+    }
+
+    function getUnitQuarters() {
+      const quarters = {};
+      document.querySelectorAll("select.quarter-select").forEach(select => {
+        quarters[select.dataset.unit] = select.value;
+      });
+      return quarters;
+    }
+
+    function loadStudentData() {
+      const savedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      
+      if (savedStudents.length === 0) {
+        alert("No saved student data found.");
+        return;
+      }
+      
+      // Create a selection dialog
+      let selectionHtml = '<h3>Select a student to load:</h3><ul style="list-style: none; padding: 0;">';
+      savedStudents.forEach((student, index) => {
+        const date = new Date(student.timestamp).toLocaleDateString();
+        selectionHtml += `
+          <li style="padding: 10px; border-bottom: 1px solid #eee; cursor: pointer;" 
+              onclick="selectStudentToLoad(${index})">
+            <strong>${student.name}</strong> ${student.id ? `(ID: ${student.id})` : ''}
+            <br><small>Saved: ${date}</small>
+          </li>
+        `;
+      });
+      selectionHtml += '</ul>';
+      
+      // Show selection dialog
+      const dialog = document.createElement('div');
+      dialog.style.position = 'fixed';
+      dialog.style.top = '50%';
+      dialog.style.left = '50%';
+      dialog.style.transform = 'translate(-50%, -50%)';
+      dialog.style.background = 'white';
+      dialog.style.padding = '20px';
+      dialog.style.borderRadius = '8px';
+      dialog.style.boxShadow = '0 4px 20px rgba(0,0,0,0.2)';
+      dialog.style.zIndex = '1000';
+      dialog.style.maxWidth = '500px';
+      dialog.style.maxHeight = '80vh';
+      dialog.style.overflow = 'auto';
+      dialog.innerHTML = selectionHtml;
+      
+      // Add close button
+      const closeButton = document.createElement('button');
+      closeButton.textContent = 'Cancel';
+      closeButton.style.marginTop = '15px';
+      closeButton.onclick = () => document.body.removeChild(dialog);
+      dialog.appendChild(closeButton);
+      
+      document.body.appendChild(dialog);
+    }
+
+    function selectStudentToLoad(index) {
+      const savedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const student = savedStudents[index];
+      
+      if (!student) {
+        alert("Error loading student data.");
+        return;
+      }
+      
+      // Clear current form
+      clearForm();
+      
+      // Populate form with saved data
+      document.getElementById("studentName").value = student.name || "";
+      document.getElementById("studentId").value = student.id || "";
+      document.getElementById("startDate").value = student.startDate || "";
+      document.getElementById("notes").value = student.notes || "";
+      document.getElementById("overrideRules").checked = student.overrideRules || false;
+      
+      // Set schedule mode
+      document.querySelector(`input[name="scheduleMode"][value="${student.scheduleMode || 'weekly'}"]`).checked = true;
+      updateQuarterSelectorsVisibility();
+      
+      // Select units
+      if (student.selectedUnits) {
+        student.selectedUnits.forEach(unit => {
+          const checkbox = document.querySelector(`input[data-code="${unit.code}"]`);
+          if (checkbox) {
+            checkbox.checked = true;
+          }
+        });
+      }
+      
+      // Restore unit durations
+      if (student.unitDurations) {
+        Object.keys(student.unitDurations).forEach(unitCode => {
+          const durationInput = document.querySelector(`input.duration[data-unit="${unitCode}"]`);
+          if (durationInput) {
+            durationInput.value = student.unitDurations[unitCode];
+          }
+        });
+      }
+      
+      // Restore unit quarters
+      if (student.unitQuarters) {
+        Object.keys(student.unitQuarters).forEach(unitCode => {
+          const quarterSelect = document.querySelector(`select.quarter-select[data-unit="${unitCode}"]`);
+          if (quarterSelect) {
+            quarterSelect.value = student.unitQuarters[unitCode];
+          }
+        });
+      }
+      
+      // Restore custom units
+      if (student.customUnits) {
+        student.customUnits.forEach(customUnit => {
+          addOtherUnit(customUnit.groupType);
+          const newId = document.querySelectorAll('.other-unit').length - 1;
+          
+          document.getElementById(`otherUnitDetails-${newId}`).value = customUnit.details || "";
+          document.getElementById(`otherUnitDuration-${newId}`).value = customUnit.duration || 6;
+          document.getElementById(`otherUnitQuarter-${newId}`).value = customUnit.quarter || 1;
+          document.getElementById(`otherUnitCheckbox-${newId}`).checked = customUnit.checked !== false;
+        });
+      }
+      
+      // Close the selection dialog
+      const dialog = document.querySelector('div[style*="position: fixed"]');
+      if (dialog) document.body.removeChild(dialog);
+      
+      // Update validation
+      updateValidationIndicator();
+      
+      alert(`Student data for "${student.name}" has been loaded.`);
+    }
+
+    function clearForm() {
+      // Clear student details
+      document.getElementById("studentName").value = "";
+      document.getElementById("studentId").value = "";
+      document.getElementById("startDate").value = "";
+      document.getElementById("notes").value = "";
+      document.getElementById("overrideRules").checked = false;
+      
+      // Clear unit selections (except core units)
+      document.querySelectorAll("input[type=checkbox]:not([disabled])").forEach(cb => {
+        cb.checked = false;
+      });
+      
+      // Reset unit durations to defaults
+      document.querySelectorAll("input.duration").forEach(input => {
+        const unitCode = input.dataset.unit;
+        const defaultDuration = coreUnits.find(u => u.code === unitCode)?.duration || 
+                               electiveUnits.find(u => u.code === unitCode)?.duration || 6;
+        input.value = defaultDuration;
+      });
+      
+      // Reset quarter selects
+      document.querySelectorAll("select.quarter-select").forEach(select => {
+        select.value = 1;
+      });
+      
+      // Clear custom units
+      document.getElementById("otherUnitsList").innerHTML = "";
+      
+      // Clear results
+      document.getElementById("results").innerHTML = "";
+      
+      // Update validation
+      updateValidationIndicator();
+    }
+
+    function clearAllData() {
+      if (confirm("Are you sure you want to clear ALL saved student data? This action cannot be undone.")) {
+        localStorage.removeItem(STORAGE_KEY);
+        updateSavedStudentsList();
+        alert("All saved student data has been cleared.");
+      }
+    }
+
+    function updateSavedStudentsList() {
+      const savedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const listContainer = document.getElementById("savedStudentsList");
+      
+      if (savedStudents.length === 0) {
+        listContainer.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">No saved students</div>';
+        return;
+      }
+      
+      let listHtml = '';
+      savedStudents.forEach((student, index) => {
+        const date = new Date(student.timestamp).toLocaleDateString();
+        listHtml += `
+          <div class="saved-student-item">
+            <div class="saved-student-info">
+              <div class="saved-student-name">${student.name}</div>
+              <div class="saved-student-id">${student.id ? `ID: ${student.id}` : ''} • Saved: ${date}</div>
+            </div>
+            <div class="saved-student-actions">
+              <button onclick="selectStudentToLoad(${index})" style="font-size: 0.8rem;">Load</button>
+              <button onclick="deleteStudent(${index})" style="font-size: 0.8rem; background: var(--error-color);">Delete</button>
+            </div>
+          </div>
+        `;
+      });
+      
+      listContainer.innerHTML = listHtml;
+    }
+
+    function deleteStudent(index) {
+      const savedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      const student = savedStudents[index];
+      
+      if (student && confirm(`Are you sure you want to delete "${student.name}"?`)) {
+        savedStudents.splice(index, 1);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStudents));
+        updateSavedStudentsList();
+      }
+    }
+
+    // Initialize the application
     document.getElementById("unitForm").addEventListener("submit", e => {
       e.preventDefault();
       const studentName = document.getElementById("studentName").value;
@@ -1349,8 +1769,10 @@
       }
     });
 
+    // Initialize the application
     buildUnitCheckboxes();
     updateValidationIndicator();
+    updateSavedStudentsList();
   </script>
 </body>
 </html>
