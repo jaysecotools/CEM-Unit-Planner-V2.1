@@ -765,6 +765,22 @@
           </svg>
           Load Student Data
         </button>
+        <button onclick="exportAllData()" class="tertiary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Export All Data
+        </button>
+        <button onclick="importAllData()" class="tertiary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 10 12 15 7 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Import All Data
+        </button>
         <button onclick="clearAllData()" class="secondary">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px;">
             <polyline points="3 6 5 6 21 6"></polyline>
@@ -1052,7 +1068,7 @@
 
     function addOtherUnit(groupType) {
       const otherUnitsList = document.getElementById("otherUnitsList");
-      const newId = Date.now();
+      const newId = 'custom_' + Date.now(); // Use a more unique ID
       
       const groupLabel = {
         'AtoH': 'Groups A-H',
@@ -1084,18 +1100,22 @@
           </span>
         </label>
         <input type="hidden" id="otherUnitGroup-${newId}" value="${groupType}">
-        <button class="remove-other-unit" onclick="removeOtherUnit(${newId})">×</button>
+        <button class="remove-other-unit" onclick="removeOtherUnit('${newId}')">×</button>
       `;
       otherUnitsList.appendChild(otherUnitDiv);
       
       updateValidationIndicator();
       updateQuarterSelectorsVisibility();
+      
+      return newId; // Return the ID for potential use
     }
 
     function removeOtherUnit(id) {
       const unitToRemove = document.querySelector(`#otherUnitCheckbox-${id}`).closest('.other-unit');
-      unitToRemove.remove();
-      updateValidationIndicator();
+      if (unitToRemove) {
+        unitToRemove.remove();
+        updateValidationIndicator();
+      }
     }
 
     function getSelectedUnits() {
@@ -1441,7 +1461,7 @@
         notes: document.getElementById("notes").value,
         overrideRules: document.getElementById("overrideRules").checked,
         scheduleMode: document.querySelector('input[name="scheduleMode"]:checked').value,
-        selectedUnits: getSelectedUnits(),
+        selectedUnits: getSelectedUnits(), // This now includes custom units
         customUnits: getCustomUnitsData(),
         unitDurations: getUnitDurations(),
         unitQuarters: getUnitQuarters(),
@@ -1613,14 +1633,30 @@
       
       // Restore custom units
       if (student.customUnits) {
+        // Clear any existing custom units first
+        document.getElementById("otherUnitsList").innerHTML = "";
+        
+        // Add each custom unit back
         student.customUnits.forEach(customUnit => {
           addOtherUnit(customUnit.groupType);
-          const newId = document.querySelectorAll('.other-unit').length - 1;
           
-          document.getElementById(`otherUnitDetails-${newId}`).value = customUnit.details || "";
-          document.getElementById(`otherUnitDuration-${newId}`).value = customUnit.duration || 6;
-          document.getElementById(`otherUnitQuarter-${newId}`).value = customUnit.quarter || 1;
-          document.getElementById(`otherUnitCheckbox-${newId}`).checked = customUnit.checked !== false;
+          // Get the most recently added custom unit (last one)
+          const customUnits = document.querySelectorAll('.other-unit');
+          const lastCustomUnit = customUnits[customUnits.length - 1];
+          
+          if (lastCustomUnit) {
+            // Extract the ID from the newly created unit
+            const newCheckbox = lastCustomUnit.querySelector('[id^="otherUnitCheckbox-"]');
+            if (newCheckbox) {
+              const newId = newCheckbox.id.split("-")[1];
+              
+              // Set all the values
+              document.getElementById(`otherUnitDetails-${newId}`).value = customUnit.details || "";
+              document.getElementById(`otherUnitDuration-${newId}`).value = customUnit.duration || 6;
+              document.getElementById(`otherUnitQuarter-${newId}`).value = customUnit.quarter || 1;
+              document.getElementById(`otherUnitCheckbox-${newId}`).checked = customUnit.checked !== false;
+            }
+          }
         });
       }
       
@@ -1716,6 +1752,92 @@
         localStorage.setItem(STORAGE_KEY, JSON.stringify(savedStudents));
         updateSavedStudentsList();
       }
+    }
+
+    // Export/Import All Data functions
+    function exportAllData() {
+      const savedStudents = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      
+      if (savedStudents.length === 0) {
+        alert("No data to export.");
+        return;
+      }
+      
+      const exportData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        totalStudents: savedStudents.length,
+        data: savedStudents
+      };
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `CIII_CEM_Backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      alert(`Exported ${savedStudents.length} student records successfully.`);
+    }
+
+    function importAllData() {
+      const fileInput = document.createElement('input');
+      fileInput.type = 'file';
+      fileInput.accept = '.json';
+      
+      fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const importedData = JSON.parse(event.target.result);
+            
+            // Validate the imported data structure
+            if (!importedData.data || !Array.isArray(importedData.data)) {
+              throw new Error('Invalid file format: missing student data array');
+            }
+            
+            const currentData = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            let importedCount = 0;
+            let skippedCount = 0;
+            
+            // Merge data (avoid duplicates based on name + ID)
+            importedData.data.forEach(importedStudent => {
+              const isDuplicate = currentData.some(existingStudent => 
+                existingStudent.name === importedStudent.name && 
+                (existingStudent.id === importedStudent.id || (!existingStudent.id && !importedStudent.id))
+              );
+              
+              if (!isDuplicate) {
+                currentData.push(importedStudent);
+                importedCount++;
+              } else {
+                skippedCount++;
+              }
+            });
+            
+            // Save merged data
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData));
+            updateSavedStudentsList();
+            
+            alert(`Import completed!\n\nImported: ${importedCount} students\nSkipped (duplicates): ${skippedCount} students\nTotal students: ${currentData.length}`);
+            
+          } catch (error) {
+            alert('Error importing data: ' + error.message);
+          }
+        };
+        
+        reader.readAsText(file);
+      };
+      
+      fileInput.click();
     }
 
     // Initialize the application
